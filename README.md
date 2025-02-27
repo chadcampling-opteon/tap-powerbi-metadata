@@ -16,8 +16,7 @@ pipx install git+https://github.com/dataops-tk/tap-powerbi-metadata.git
 
 - `client_id` - The unique client ID for the Power BI tenant.
 - `tenant_id` - The unique identifier for the Power BI tenant.
-- `username` - Username to use in the flow.
-- `password` - Password to use in the auth flow.
+- `client_secret` - Password to use in the client_credentials auth flow.
 - `start_date` - Optional. Earliest date of data to stream.
 
 Note:

@@ -29,8 +29,7 @@ class TapPowerBIMetadata(Tap):
     config_jsonschema = PropertiesList(
         Property("tenant_id", StringType, required=True),
         Property("client_id", StringType, required=True),
-        Property("username", StringType, required=True),
-        Property("password", StringType, required=True),
+        Property("client_secret", StringType, required=True),
         Property("start_date", DateTimeType),
     ).to_dict()
 

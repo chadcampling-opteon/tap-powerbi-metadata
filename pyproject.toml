@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "tap-powerbi-metadata"
-version = "0.0.4"
+version = "0.0.5"
 description = "`tap-powerbi-metadata` is Singer-compliant PowerBIMetadata tap built with Singer SDK."
 authors = ["AJ Steers <aaaronsteers@gmail.com>", "John Timeus <john.timeus@slalom.com>"]
 license = "Apache v2"
 
 [tool.poetry.dependencies]
-python = ">=3.6,<3.9"
-singer-sdk = "^0.1.0"
+python = ">=3.9,<3.13"
+singer-sdk = "^0.44.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.1.2"
