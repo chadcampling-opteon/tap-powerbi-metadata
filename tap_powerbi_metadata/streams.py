@@ -30,12 +30,10 @@ class OAuthActiveDirectoryAuthenticator(OAuthAuthenticator):
     @property
     def oauth_request_body(self) -> dict:
         return {
-            'grant_type': 'password',
-            'scope': 'https://api.powerbi.com',
-            'resource': 'https://analysis.windows.net/powerbi/api',
+            'grant_type': 'client_credentials',
+            'scope': 'https://analysis.windows.net/powerbi/api/.default',
             'client_id': self.config["client_id"],
-            'username': self.config["username"],
-            'password': self.config["password"],
+            'client_secret': self.config["client_secret"],
         }
 
 
@@ -69,8 +67,9 @@ class TapPowerBIMetadataStream(RESTStream):
     def authenticator(self) -> APIAuthenticatorBase:
         return OAuthActiveDirectoryAuthenticator(
             stream=self,
-            auth_endpoint=f"https://login.microsoftonline.com/{self.config['tenant_id']}/oauth2/token",
-            oauth_scopes="https://analysis.windows.net/powerbi/api",
+            auth_endpoint=f"https://login.microsoftonline.com/{self.config['tenant_id']}/oauth2/v2.0/token",
+            oauth_scopes="https://analysis.windows.net/powerbi/api/.default",
+
         )
 
     def get_next_page_token(self, response: requests.Response, previous_token: Optional[Any] = None) -> Optional[Any]:
