@@ -395,7 +395,7 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
         ),
         Property("SharingScope", StringType),
         Property("SwitchState", StringType),
-        Property("SubscriptionDetails", ArrayType(ObjectType(additional_properties=True))),
+        Property("SubscriptionDetails", ObjectType(additional_properties=True)),
         Property(
             "SubscribeeInformation",
             ArrayType(
