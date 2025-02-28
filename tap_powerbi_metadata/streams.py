@@ -331,7 +331,7 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
             )
         ),
         Property("OriginalOwner", StringType),
-        Property("PackageId", StringType),
+        Property("PackageId", IntegerType),
         Property(
             "PaginatedReportDataSources",
             ArrayType(
@@ -360,7 +360,7 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
             )
         ),
         Property("RecordType", IntegerType),
-        Property("RefreshEnforcementPolicy", StringType),
+        Property("RefreshEnforcementPolicy", IntegerType),
         Property("RefreshType", StringType),
         Property("ReportCertificationStage", StringType),
         Property("ReportId", StringType),
