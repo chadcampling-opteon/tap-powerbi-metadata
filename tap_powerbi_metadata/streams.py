@@ -242,7 +242,7 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
             "FolderAccessRequests",
             ArrayType(
                 ObjectType(
-                    Property("GroupId", StringType),
+                    Property("GroupId", IntegerType),
                     Property("GroupObjectId", StringType),
                     Property("RolePermissions", StringType),
                     Property("UserId", IntegerType),
