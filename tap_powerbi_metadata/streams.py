@@ -135,6 +135,7 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
         Property("AppName", StringType),
         Property("AppId", StringType),
         Property("AppReportId", StringType),
+        Property("ArtifactAccessRequestInfo", StringType),
         Property("ArtifactId", StringType),
         Property("ArtifactKind", StringType),
         Property("ArtifactName", StringType),
@@ -147,6 +148,7 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
                 Property("Name", StringType),
             )
         ),
+        Property("BillingType", IntegerType),
         Property("CapacityId", StringType),
         Property("CapacityName", StringType),
         Property("CapacityState", StringType),
@@ -189,6 +191,7 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
         ),
         Property("DatasourceId", StringType),
         Property("DatasourceObjectIds", ArrayType(StringType)),
+        Property("DatasourceInformations", StringType),
         Property("Datasources",  
             ArrayType(
                 ObjectType(
@@ -214,6 +217,7 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
         Property("DistributionMethod", StringType),
         Property("EndPoint", StringType),
         Property("Experience", StringType),
+        Property("ExportedArtifactDownloadInfo", StringType),
         Property(
             "ExportedArtifactInfo",
             ObjectType(
@@ -238,7 +242,10 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
             "FolderAccessRequests",
             ArrayType(
                 ObjectType(
+                    Property("GroupId", StringType),
+                    Property("GroupObjectId", StringType),
                     Property("RolePermissions", StringType),
+                    Property("UserId", StringType),
                     Property("UserObjectId", StringType),
                 )
             )
@@ -246,6 +253,8 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
         Property("FolderDisplayName", StringType),
         Property("FolderObjectId", StringType),
         Property("GatewayClusterId", StringType),
+        Property("GatewayClusterDatasources", StringType),
+        Property("GatewayClustersObjectIds", StringType),
         Property(
             "GatewayClusters",
             ArrayType(
@@ -295,6 +304,7 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
         Property("IsTemplateAppFromMarketplace", BooleanType),
         Property("IsTenantAdminApi", BooleanType),
         Property("IsUpdateAppActivity", BooleanType),
+        Property("ItemId", StringType),
         Property("ItemName", StringType),
         Property("LastRefreshTime", StringType),
         Property("MembershipInformation", 
@@ -321,6 +331,7 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
             )
         ),
         Property("OriginalOwner", StringType),
+        Property("PackageId", StringType),
         Property(
             "PaginatedReportDataSources",
             ArrayType(
@@ -349,9 +360,11 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
             )
         ),
         Property("RecordType", IntegerType),
+        Property("RefreshEnforcementPolicy", StringType),
         Property("RefreshType", StringType),
         Property("ReportCertificationStage", StringType),
         Property("ReportId", StringType),
+        Property("ReportMobileLayoutAction", StringType),
         Property("ReportName", StringType),
         Property("ReportType", StringType),
         Property("RequestId", StringType),
@@ -372,12 +385,17 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
             ArrayType(
                 ObjectType(
                     Property("RecipientEmail", StringType),
+                    Property("RecipientName", StringType),
+                    Property("ObjectId", StringType),
+                    Property("UserPrincipalName", StringType),
                     Property("ResharePermission", StringType),
+                    Property("TenantObjectId", StringType),
                 )
             )
         ),
         Property("SharingScope", StringType),
         Property("SwitchState", StringType),
+        Property("SubscriptionDetails", StringType),
         Property(
             "SubscribeeInformation",
             ArrayType(
