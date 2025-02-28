@@ -245,7 +245,7 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
                     Property("GroupId", StringType),
                     Property("GroupObjectId", StringType),
                     Property("RolePermissions", StringType),
-                    Property("UserId", StringType),
+                    Property("UserId", IntegerType),
                     Property("UserObjectId", StringType),
                 )
             )
