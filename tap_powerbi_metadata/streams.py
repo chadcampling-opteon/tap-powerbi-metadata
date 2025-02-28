@@ -135,7 +135,7 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
         Property("AppName", StringType),
         Property("AppId", StringType),
         Property("AppReportId", StringType),
-        Property("ArtifactAccessRequestInfo", StringType),
+        Property("ArtifactAccessRequestInfo", ObjectType(additionalProperties=True)),
         Property("ArtifactId", StringType),
         Property("ArtifactKind", StringType),
         Property("ArtifactName", StringType),
@@ -191,7 +191,7 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
         ),
         Property("DatasourceId", StringType),
         Property("DatasourceObjectIds", ArrayType(StringType)),
-        Property("DatasourceInformations", StringType),
+        Property("DatasourceInformations", ArrayType(ObjectType(additionalProperties=True))),
         Property("Datasources",  
             ArrayType(
                 ObjectType(
@@ -217,7 +217,7 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
         Property("DistributionMethod", StringType),
         Property("EndPoint", StringType),
         Property("Experience", StringType),
-        Property("ExportedArtifactDownloadInfo", StringType),
+        Property("ExportedArtifactDownloadInfo", ObjectType(additionalProperties=True)),
         Property(
             "ExportedArtifactInfo",
             ObjectType(
@@ -253,8 +253,8 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
         Property("FolderDisplayName", StringType),
         Property("FolderObjectId", StringType),
         Property("GatewayClusterId", StringType),
-        Property("GatewayClusterDatasources", StringType),
-        Property("GatewayClustersObjectIds", StringType),
+        Property("GatewayClusterDatasources", ArrayType(ObjectType(additionalProperties=True))),
+        Property("GatewayClustersObjectIds", ArrayType(StringType)),
         Property(
             "GatewayClusters",
             ArrayType(
@@ -395,7 +395,7 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
         ),
         Property("SharingScope", StringType),
         Property("SwitchState", StringType),
-        Property("SubscriptionDetails", StringType),
+        Property("SubscriptionDetails", ArrayType(ObjectType(additionalProperties=True))),
         Property(
             "SubscribeeInformation",
             ArrayType(
