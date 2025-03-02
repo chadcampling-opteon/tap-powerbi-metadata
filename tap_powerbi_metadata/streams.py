@@ -1,7 +1,7 @@
 """Stream class for tap-powerbi-metadata."""
 
 from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 from urllib import parse
@@ -48,17 +48,27 @@ class TapPowerBIMetadataStream(RESTStream):
         API only supports a single UTC day, or continuationToken-based pagination.
         """
         params = {}
+        current_date = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         if next_page_token:
             starting_datetime = next_page_token["urlStartDate"]
             continuationToken = next_page_token.get("continuationToken")
         else:
             starting_datetime = self.get_starting_timestamp(partition)
+            if starting_datetime :
+                date_difference = current_date - starting_datetime
+                if date_difference > timedelta(days=27):
+                    self.logger.error("The start date or bookmark is more than 28 days ago.")
+                    raise ValueError("The start date or bookmark is more than 28 days ago.")
+            else:
+                starting_datetime = current_date - timedelta(days=27)
+                self.logger.info(f"No start date or bookmark, sync last 28 days ({starting_datetime}).")
             continuationToken = None
+
         if continuationToken:
             params["continuationToken"] = "'" + continuationToken + "'"
         else:
             params.update({"startDateTime": starting_datetime.strftime(API_DATE_FORMAT)})
-            ending_datetime = starting_datetime.replace(hour=0, minute=0, second=0) + timedelta(days=1) + timedelta(microseconds=-1)
+            ending_datetime = starting_datetime.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1) + timedelta(microseconds=-1)
             params.update({"endDateTime": ending_datetime.strftime(API_DATE_FORMAT)})
         self.logger.debug(params)
         return params
