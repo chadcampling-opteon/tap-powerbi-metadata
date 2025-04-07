@@ -3,6 +3,7 @@
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from time import sleep
 from typing import Any, Dict, Iterable, Optional
 from urllib import parse
 import requests
@@ -21,6 +22,7 @@ from singer_sdk.typing import (
     Property,
     StringType,
 )
+from singer_sdk.helpers._typing import TypeConformanceLevel
 
 API_DATE_FORMAT = "'%Y-%m-%dT%H:%M:%SZ'"
 
@@ -42,36 +44,6 @@ class TapPowerBIMetadataStream(RESTStream):
 
     url_base = "https://api.powerbi.com/v1.0/myorg"
 
-    def get_url_params(self, partition: Optional[dict], next_page_token: Optional[Any] = None) -> Dict[str, Any]:
-        """Return a dictionary of values to be used in URL parameterization.
-        
-        API only supports a single UTC day, or continuationToken-based pagination.
-        """
-        params = {}
-        current_date = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        if next_page_token:
-            starting_datetime = next_page_token["urlStartDate"]
-            continuationToken = next_page_token.get("continuationToken")
-        else:
-            starting_datetime = self.get_starting_timestamp(partition)
-            if starting_datetime :
-                date_difference = current_date - starting_datetime
-                if date_difference > timedelta(days=27):
-                    self.logger.error("The start date or bookmark is more than 28 days ago.")
-                    raise ValueError("The start date or bookmark is more than 28 days ago.")
-            else:
-                starting_datetime = current_date - timedelta(days=27)
-                self.logger.info(f"No start date or bookmark, sync last 28 days ({starting_datetime}).")
-            continuationToken = None
-
-        if continuationToken:
-            params["continuationToken"] = "'" + continuationToken + "'"
-        else:
-            params.update({"startDateTime": starting_datetime.strftime(API_DATE_FORMAT)})
-            ending_datetime = starting_datetime.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1) + timedelta(microseconds=-1)
-            params.update({"endDateTime": ending_datetime.strftime(API_DATE_FORMAT)})
-        self.logger.debug(params)
-        return params
 
     @property
     def authenticator(self) -> APIAuthenticatorBase:
@@ -82,42 +54,7 @@ class TapPowerBIMetadataStream(RESTStream):
 
         )
 
-    def get_next_page_token(self, response: requests.Response, previous_token: Optional[Any] = None) -> Optional[Any]:
-        """Return token for identifying next page or None if not applicable."""
-        resp_json = response.json()
-        continuationToken = resp_json.get("continuationToken")
-        next_page_token = {}
-        if not previous_token:
-            # First time creating a pagination token so we need to record the initial start date.
-            req_url = response.request.url
-            req_params = parse.parse_qs(parse.urlparse(req_url).query)
-            self.logger.debug("Params: {}".format(req_params))
-            latest_url_start_date_param = req_params["startDateTime"][0]
-            next_page_token["urlStartDate"] = datetime.strptime(latest_url_start_date_param, API_DATE_FORMAT)
-        else: 
-            next_page_token["urlStartDate"] = previous_token.get("urlStartDate")
-        if continuationToken:
-            next_page_token["continuationToken"] = requests.utils.unquote(continuationToken)
-        else:
-            next_page_token["continuationToken"] = None
-            # Now check if we should repeat API call for next day
-            latestUrlStartDate = next_page_token["urlStartDate"]
-            nextUrlStartDate = latestUrlStartDate.replace(hour=0, minute=0, second=0) + timedelta(days=1)
-            self.logger.info("No next page token found, checking if {} is greater than now".format(nextUrlStartDate))
-            if nextUrlStartDate < datetime.utcnow():
-                self.logger.info("{} is less than now, incrementing date by 1 and continuing".format(nextUrlStartDate))
-                next_page_token["urlStartDate"] = nextUrlStartDate
-                self.logger.debug(next_page_token)
-            else:
-                self.logger.info("No continuationToken, and nextUrlStartDate after today, calling it quits")
-                return None
-        return next_page_token
 
-    def parse_response(self, response: requests.Response) -> Iterable[dict]:
-        """Parse the response and return an iterator of result rows."""
-        resp_json = response.json()
-        for row in resp_json.get("activityEventEntities"):
-            yield row
 
 
 class ActivityEventsStream(TapPowerBIMetadataStream):
@@ -494,3 +431,159 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
         Property("WorkSpaceName", StringType),
         Property("WorkspacesSemicolonDelimitedList", StringType),
     ).to_dict()
+    
+    def get_url_params(self, partition: Optional[dict], next_page_token: Optional[Any] = None) -> Dict[str, Any]:
+        """Return a dictionary of values to be used in URL parameterization.
+        
+        API only supports a single UTC day, or continuationToken-based pagination.
+        """
+        params = {}
+        current_date = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        if next_page_token:
+            starting_datetime = next_page_token["urlStartDate"]
+            continuationToken = next_page_token.get("continuationToken")
+        else:
+            starting_datetime = self.get_starting_timestamp(partition)
+            if starting_datetime :
+                date_difference = current_date - starting_datetime
+                if date_difference > timedelta(days=27):
+                    self.logger.error("The start date or bookmark is more than 28 days ago.")
+                    raise ValueError("The start date or bookmark is more than 28 days ago.")
+            else:
+                starting_datetime = current_date - timedelta(days=27)
+                self.logger.info(f"No start date or bookmark, sync last 28 days ({starting_datetime}).")
+            continuationToken = None
+
+        if continuationToken:
+            params["continuationToken"] = "'" + continuationToken + "'"
+        else:
+            params.update({"startDateTime": starting_datetime.strftime(API_DATE_FORMAT)})
+            ending_datetime = starting_datetime.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1) + timedelta(microseconds=-1)
+            params.update({"endDateTime": ending_datetime.strftime(API_DATE_FORMAT)})
+        self.logger.debug(params)
+        return params
+    
+    def get_next_page_token(self, response: requests.Response, previous_token: Optional[Any] = None) -> Optional[Any]:
+        """Return token for identifying next page or None if not applicable."""
+        resp_json = response.json()
+        continuationToken = resp_json.get("continuationToken")
+        next_page_token = {}
+        if not previous_token:
+            # First time creating a pagination token so we need to record the initial start date.
+            req_url = response.request.url
+            req_params = parse.parse_qs(parse.urlparse(req_url).query)
+            self.logger.debug("Params: {}".format(req_params))
+            latest_url_start_date_param = req_params["startDateTime"][0]
+            next_page_token["urlStartDate"] = datetime.strptime(latest_url_start_date_param, API_DATE_FORMAT)
+        else: 
+            next_page_token["urlStartDate"] = previous_token.get("urlStartDate")
+        if continuationToken:
+            next_page_token["continuationToken"] = requests.utils.unquote(continuationToken)
+        else:
+            next_page_token["continuationToken"] = None
+            # Now check if we should repeat API call for next day
+            latestUrlStartDate = next_page_token["urlStartDate"]
+            nextUrlStartDate = latestUrlStartDate.replace(hour=0, minute=0, second=0) + timedelta(days=1)
+            self.logger.info("No next page token found, checking if {} is greater than now".format(nextUrlStartDate))
+            if nextUrlStartDate < datetime.utcnow():
+                self.logger.info("{} is less than now, incrementing date by 1 and continuing".format(nextUrlStartDate))
+                next_page_token["urlStartDate"] = nextUrlStartDate
+                self.logger.debug(next_page_token)
+            else:
+                self.logger.info("No continuationToken, and nextUrlStartDate after today, calling it quits")
+                return None
+        return next_page_token
+
+    def parse_response(self, response: requests.Response) -> Iterable[dict]:
+        """Parse the response and return an iterator of result rows."""
+        resp_json = response.json()
+        for row in resp_json.get("activityEventEntities"):
+            yield row
+            
+class WorkspaceInfoStream(TapPowerBIMetadataStream):
+    """Define custom stream."""
+
+    name = "workspace_info"
+    path = "/admin/workspaces/modified"
+    rest_method = "GET"
+    primary_keys = ["id"]
+    replication_key = None
+    records_jsonpath = "$[*]"
+    TYPE_CONFORMANCE_LEVEL = TypeConformanceLevel.ROOT_ONLY
+
+
+    schema = PropertiesList(
+        Property("id", StringType),
+        Property("name", StringType),
+        Property("description", StringType),
+        Property("type", StringType),
+        Property("state", StringType),
+        Property("isOnDedicatedCapacity", BooleanType),
+        Property("capacityId", StringType),
+        Property("defaultDatasetStorageFormat", StringType),
+        Property("reports", ArrayType(wrapped_type=ObjectType())),
+        Property("dashboards", ArrayType(wrapped_type=ObjectType())),
+        Property("datasets", ArrayType(wrapped_type=ObjectType())),
+        Property("dataflows", ArrayType(wrapped_type=ObjectType())),
+        Property("datamarts", ArrayType(wrapped_type=ObjectType())),
+    ).to_dict()
+
+
+    def process_workspace_batch(self, workspace_ids):
+        """
+        Request workspace info for a batch of workspaces.
+        """
+
+        workspace_info_req = 'https://api.powerbi.com/v1.0/myorg/admin/workspaces/getInfo' \
+                            '?lineage=True' \
+                            '&datasourceDetails=True' \
+                            '&datasetSchema=False' \
+                            '&datasetExpressions=False' 
+
+        workspace_info_req_body = {
+        "workspaces": workspace_ids
+        }
+
+        info_query = requests.post(
+            workspace_info_req, 
+            auth=self.authenticator,
+            json=workspace_info_req_body
+            )
+        
+        info_query.raise_for_status()
+        scan_id = info_query.json()["id"]
+        status_url = f"https://api.powerbi.com/v1.0/myorg/admin/workspaces/scanStatus/{scan_id}"
+        finished = False
+        sleep(3)
+        
+        while not finished:
+            
+            scan = requests.get(status_url, auth=self.authenticator)
+            scan.raise_for_status()
+            scan_status = scan.json()
+
+            if scan_status["status"] == "Succeeded":
+                finished = True
+            else:
+                sleep(10)
+
+        final_result_r = f"https://api.powerbi.com/v1.0/myorg/admin/workspaces/scanResult/{scan_id}"
+
+        result = requests.get(final_result_r, auth=self.authenticator)
+        result.raise_for_status()
+
+        rj = result.json()
+
+        for row in rj["workspaces"]:
+            yield row
+
+
+    def parse_response(self, response: requests.Response):
+        """Parse the response and return an iterator of result records.
+        """
+
+        workspace_ids = [w['id'] for w in response.json()]
+        workspace_chunks = [workspace_ids[i:i + 100] for i in range(0, len(workspace_ids), 100)]
+
+        for chunk in workspace_chunks:
+            yield from self.process_workspace_batch(chunk)
