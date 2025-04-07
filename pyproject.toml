@@ -8,10 +8,13 @@ license = "Apache v2"
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
 singer-sdk = "^0.44.0"
+python-dateutil = ">=2.9.0.post0"
 
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
+singer-sdk = { version = "^0.44.0", extras = ["testing"] }
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

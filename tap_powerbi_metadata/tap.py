@@ -11,14 +11,15 @@ from singer_sdk.typing import (
 )
 
 from tap_powerbi_metadata.streams import (
-    TapPowerBIMetadataStream,
     ActivityEventsStream,
+    WorkspaceInfoStream,
 )
 
 PLUGIN_NAME = "tap-powerbi-metadata"
 
 STREAM_TYPES = [
-    ActivityEventsStream,
+  ActivityEventsStream,
+  WorkspaceInfoStream
 ]
 
 
