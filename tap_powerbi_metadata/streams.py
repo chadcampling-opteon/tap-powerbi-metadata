@@ -619,11 +619,9 @@ class DataSourcesStream(Stream):
     TYPE_CONFORMANCE_LEVEL = TypeConformanceLevel.ROOT_ONLY
     
     schema = PropertiesList(
-        Property("connectionString", StringType),
         Property("datasourceId", StringType),
         Property("datasourceType", StringType),
         Property("gatewayId", StringType),
-        Property("name", StringType),
         Property("connectionDetails", ObjectType()),
     ).to_dict()
     
