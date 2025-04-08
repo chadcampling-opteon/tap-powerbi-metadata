@@ -9,6 +9,7 @@ from urllib import parse
 import requests
 
 
+from singer_sdk import Stream
 from singer_sdk.streams import RESTStream
 from singer_sdk.authenticators import APIAuthenticatorBase, SimpleAuthenticator, OAuthAuthenticator, OAuthJWTAuthenticator
 from singer_sdk.typing import (
@@ -526,6 +527,7 @@ class WorkspaceInfoStream(TapPowerBIMetadataStream):
         Property("datasets", ArrayType(wrapped_type=ObjectType())),
         Property("dataflows", ArrayType(wrapped_type=ObjectType())),
         Property("datamarts", ArrayType(wrapped_type=ObjectType())),
+        Property("users", ArrayType(wrapped_type=ObjectType())),
     ).to_dict()
 
 
@@ -538,7 +540,8 @@ class WorkspaceInfoStream(TapPowerBIMetadataStream):
                             '?lineage=True' \
                             '&datasourceDetails=True' \
                             '&datasetSchema=False' \
-                            '&datasetExpressions=False' 
+                            '&datasetExpressions=False' \
+                            '&getArtifactUsers=True' 
 
         workspace_info_req_body = {
         "workspaces": workspace_ids
@@ -574,8 +577,18 @@ class WorkspaceInfoStream(TapPowerBIMetadataStream):
 
         rj = result.json()
 
+        # response includes all datasource referenced by returned workspaces. Stuff it into the record to shuffle to child context.
+        # as it isn't in schema it will be dropped from this stream but will be processed by child stream.
+        ds = rj["datasourceInstances"]
+        first_row = True
+
+
         for row in rj["workspaces"]:
+            if first_row:
+                row["datasources"] = ds
+                first_row = False
             yield row
+
 
 
     def parse_response(self, response: requests.Response):
@@ -587,3 +600,34 @@ class WorkspaceInfoStream(TapPowerBIMetadataStream):
 
         for chunk in workspace_chunks:
             yield from self.process_workspace_batch(chunk)
+            
+    def get_child_context(self, record, context):
+        datasources = record.get("datasources")
+        if datasources:
+            return {"datasources": datasources}
+        return None
+
+            
+class DataSourcesStream(Stream):
+    """Define custom stream."""
+
+    name = "datasources"
+    primary_keys = ["datasourceId"]
+    parent_stream_type = WorkspaceInfoStream
+    ignore_parent_replication_key = False
+    state_partitioning_keys = []
+    TYPE_CONFORMANCE_LEVEL = TypeConformanceLevel.ROOT_ONLY
+    
+    schema = PropertiesList(
+        Property("connectionString", StringType),
+        Property("datasourceId", StringType),
+        Property("datasourceType", StringType),
+        Property("gatewayId", StringType),
+        Property("name", StringType),
+        Property("connectionDetails", ObjectType()),
+    ).to_dict()
+    
+    def get_records(self, context):
+        for record in context["datasources"]:
+            yield record
+
