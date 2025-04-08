@@ -538,7 +538,8 @@ class WorkspaceInfoStream(TapPowerBIMetadataStream):
                             '?lineage=True' \
                             '&datasourceDetails=True' \
                             '&datasetSchema=False' \
-                            '&datasetExpressions=False' 
+                            '&datasetExpressions=False' \
+                            '&getArtifactUsers=True' 
 
         workspace_info_req_body = {
         "workspaces": workspace_ids
