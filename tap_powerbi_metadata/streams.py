@@ -579,11 +579,11 @@ class WorkspaceInfoStream(TapPowerBIMetadataStream):
 
         # response includes all datasource referenced by returned workspaces. Stuff it into the record to shuffle to child context.
         # as it isn't in schema it will be dropped from this stream but will be processed by child stream.
-        ds = rj["datasourceInstances"]
+        ds = rj.get("datasourceInstances", [])
         first_row = True
 
 
-        for row in rj["workspaces"]:
+        for row in rj.get("workspaces", []):
             if first_row:
                 row["datasources"] = ds
                 first_row = False
