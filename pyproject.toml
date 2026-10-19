@@ -1,25 +1,33 @@
-[tool.poetry]
+[build-system]
+requires = ["hatchling>=1,<2"]
+build-backend = "hatchling.build"
+
+[project]
 name = "tap-powerbi-metadata"
 version = "0.0.5"
-description = "`tap-powerbi-metadata` is Singer-compliant PowerBIMetadata tap built with Singer SDK."
-authors = ["AJ Steers <aaaronsteers@gmail.com>", "John Timeus <john.timeus@slalom.com>"]
-license = "Apache v2"
+description = "Singer-compliant PowerBIMetadata tap built with the Singer SDK."
+readme = "README.md"
+authors = [
+    { name = "AJ Steers", email = "aaaronsteers@gmail.com" },
+    { name = "John Timeus", email = "john.timeus@slalom.com" },
+]
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+dependencies = [
+    "python-dateutil>=2.9.0.post0",
+    "requests~=2.34.0",
+    "singer-sdk~=0.53.6",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.9,<3.13"
-singer-sdk = "^0.44.0"
-python-dateutil = ">=2.9.0.post0"
+[project.scripts]
+tap-powerbi-metadata = "tap_powerbi_metadata.tap:cli"
 
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3.4"
-singer-sdk = { version = "^0.44.0", extras = ["testing"] }
-
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.scripts]
-# CLI declaration
-tap-powerbi-metadata = 'tap_powerbi_metadata.tap:cli'
+[dependency-groups]
+dev = [
+    { include-group = "test" },
+]
+test = [
+    "pytest>=9",
+    "singer-sdk[testing]",
+]

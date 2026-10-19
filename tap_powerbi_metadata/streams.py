@@ -11,6 +11,7 @@ import requests
 
 from singer_sdk import Stream
 from singer_sdk.streams import RESTStream
+from singer_sdk.pagination import BaseAPIPaginator
 from singer_sdk.authenticators import APIAuthenticatorBase, SimpleAuthenticator, OAuthAuthenticator, OAuthJWTAuthenticator
 from singer_sdk.typing import (
     ArrayType,
@@ -26,6 +27,7 @@ from singer_sdk.typing import (
 from singer_sdk.helpers._typing import TypeConformanceLevel
 
 API_DATE_FORMAT = "'%Y-%m-%dT%H:%M:%SZ'"
+WORKSPACE_CHILD_OBJECT = ObjectType(additional_properties=True)
 
 class OAuthActiveDirectoryAuthenticator(OAuthAuthenticator):
     # https://pivotalbi.com/automate-your-power-bi-dataset-refresh-with-python
@@ -35,8 +37,8 @@ class OAuthActiveDirectoryAuthenticator(OAuthAuthenticator):
         return {
             'grant_type': 'client_credentials',
             'scope': 'https://analysis.windows.net/powerbi/api/.default',
-            'client_id': self.config["client_id"],
-            'client_secret': self.config["client_secret"],
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
         }
 
 
@@ -49,10 +51,10 @@ class TapPowerBIMetadataStream(RESTStream):
     @property
     def authenticator(self) -> APIAuthenticatorBase:
         return OAuthActiveDirectoryAuthenticator(
-            stream=self,
             auth_endpoint=f"https://login.microsoftonline.com/{self.config['tenant_id']}/oauth2/v2.0/token",
             oauth_scopes="https://analysis.windows.net/powerbi/api/.default",
-
+            client_id=self.config["client_id"],
+            client_secret=self.config["client_secret"],
         )
 
 
@@ -464,49 +466,81 @@ class ActivityEventsStream(TapPowerBIMetadataStream):
         self.logger.debug(params)
         return params
     
-    def get_next_page_token(self, response: requests.Response, previous_token: Optional[Any] = None) -> Optional[Any]:
-        """Return token for identifying next page or None if not applicable."""
-        resp_json = response.json()
-        continuationToken = resp_json.get("continuationToken")
-        next_page_token = {}
-        if not previous_token:
-            # First time creating a pagination token so we need to record the initial start date.
-            req_url = response.request.url
-            req_params = parse.parse_qs(parse.urlparse(req_url).query)
-            self.logger.debug("Params: {}".format(req_params))
-            latest_url_start_date_param = req_params["startDateTime"][0]
-            next_page_token["urlStartDate"] = datetime.strptime(latest_url_start_date_param, API_DATE_FORMAT)
-        else: 
-            next_page_token["urlStartDate"] = previous_token.get("urlStartDate")
-        if continuationToken:
-            next_page_token["continuationToken"] = requests.utils.unquote(continuationToken)
-        else:
-            next_page_token["continuationToken"] = None
-            # Now check if we should repeat API call for next day
-            latestUrlStartDate = next_page_token["urlStartDate"]
-            nextUrlStartDate = latestUrlStartDate.replace(hour=0, minute=0, second=0) + timedelta(days=1)
-            self.logger.info("No next page token found, checking if {} is greater than now".format(nextUrlStartDate))
-            if nextUrlStartDate < datetime.utcnow():
-                self.logger.info("{} is less than now, incrementing date by 1 and continuing".format(nextUrlStartDate))
-                next_page_token["urlStartDate"] = nextUrlStartDate
-                self.logger.debug(next_page_token)
-            else:
-                self.logger.info("No continuationToken, and nextUrlStartDate after today, calling it quits")
-                return None
-        return next_page_token
+    def get_new_paginator(self) -> BaseAPIPaginator:
+        """Return a paginator that continues through empty UTC days."""
+        return ActivityEventsPaginator(self)
 
     def parse_response(self, response: requests.Response) -> Iterable[dict]:
         """Parse the response and return an iterator of result rows."""
         resp_json = response.json()
-        for row in resp_json.get("activityEventEntities"):
+        for row in resp_json.get("activityEventEntities") or []:
             yield row
-            
+
+
+class ActivityEventsPaginator(BaseAPIPaginator):
+    """Page activity events by UTC day, including days that contain no events."""
+
+    def __init__(self, stream: ActivityEventsStream) -> None:
+        super().__init__(start_value=None)
+        self.stream = stream
+
+    def continue_if_empty(self, response: requests.Response) -> bool:
+        """An empty UTC day is a normal remainder of the bookmarked date."""
+        return True
+
+    def get_next(self, response: requests.Response) -> Optional[dict]:
+        """Return the next continuation token or UTC day, or None when caught up."""
+        resp_json = response.json()
+        continuation_token = resp_json.get("continuationToken")
+        previous_token = self.current_value
+        next_page_token: dict = {}
+        if not previous_token:
+            req_url = response.request.url
+            req_params = parse.parse_qs(parse.urlparse(req_url).query)
+            self.stream.logger.debug("Params: {}".format(req_params))
+            latest_url_start_date_param = req_params["startDateTime"][0]
+            next_page_token["urlStartDate"] = datetime.strptime(
+                latest_url_start_date_param,
+                API_DATE_FORMAT,
+            )
+        else:
+            next_page_token["urlStartDate"] = previous_token.get("urlStartDate")
+        if continuation_token:
+            next_page_token["continuationToken"] = requests.utils.unquote(continuation_token)
+        else:
+            next_page_token["continuationToken"] = None
+            latest_url_start_date = next_page_token["urlStartDate"]
+            next_url_start_date = latest_url_start_date.replace(
+                hour=0,
+                minute=0,
+                second=0,
+            ) + timedelta(days=1)
+            self.stream.logger.info(
+                "No next page token found, checking if {} is greater than now".format(
+                    next_url_start_date,
+                )
+            )
+            if next_url_start_date < datetime.now(timezone.utc).replace(tzinfo=None):
+                self.stream.logger.info(
+                    "{} is less than now, incrementing date by 1 and continuing".format(
+                        next_url_start_date,
+                    )
+                )
+                next_page_token["urlStartDate"] = next_url_start_date
+                self.stream.logger.debug(next_page_token)
+            else:
+                self.stream.logger.info(
+                    "No continuationToken, and nextUrlStartDate after today, calling it quits"
+                )
+                return None
+        return next_page_token
+
 class WorkspaceInfoStream(TapPowerBIMetadataStream):
     """Define custom stream."""
 
     name = "workspace_info"
     path = "/admin/workspaces/modified"
-    rest_method = "GET"
+    http_method = "GET"
     primary_keys = ["id"]
     replication_key = None
     records_jsonpath = "$[*]"
@@ -519,15 +553,16 @@ class WorkspaceInfoStream(TapPowerBIMetadataStream):
         Property("description", StringType),
         Property("type", StringType),
         Property("state", StringType),
+        Property("dataRetrievalState", StringType),
         Property("isOnDedicatedCapacity", BooleanType),
         Property("capacityId", StringType),
         Property("defaultDatasetStorageFormat", StringType),
-        Property("reports", ArrayType(wrapped_type=ObjectType())),
-        Property("dashboards", ArrayType(wrapped_type=ObjectType())),
-        Property("datasets", ArrayType(wrapped_type=ObjectType())),
-        Property("dataflows", ArrayType(wrapped_type=ObjectType())),
-        Property("datamarts", ArrayType(wrapped_type=ObjectType())),
-        Property("users", ArrayType(wrapped_type=ObjectType())),
+        Property("reports", ArrayType(wrapped_type=WORKSPACE_CHILD_OBJECT)),
+        Property("dashboards", ArrayType(wrapped_type=WORKSPACE_CHILD_OBJECT)),
+        Property("datasets", ArrayType(wrapped_type=WORKSPACE_CHILD_OBJECT)),
+        Property("dataflows", ArrayType(wrapped_type=WORKSPACE_CHILD_OBJECT)),
+        Property("datamarts", ArrayType(wrapped_type=WORKSPACE_CHILD_OBJECT)),
+        Property("users", ArrayType(wrapped_type=WORKSPACE_CHILD_OBJECT)),
     ).to_dict()
 
 

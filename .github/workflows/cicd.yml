@@ -14,7 +14,11 @@ jobs:
       max-parallel: 4
       matrix:
         python-version:
-          - 3.8
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
     steps:
       - name: Clone git repo
         uses: actions/checkout@v1
@@ -23,21 +27,16 @@ jobs:
           echo "Build Number: $GITHUB_RUN_NUMBER"
           echo "Version:      $(cat VERSION).$GITHUB_RUN_NUMBER"
           echo "Run ID:       ${{ github.run_id }}"
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
+      - name: Setup uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install pipx and poetry
-        run: |
-          python3 -m pip install pipx
-          python3 -m pipx ensurepath
-          pipx install poetry
       - name: Install tap
         run: |
-          poetry install
+          uv sync --frozen
       #- name: Run tests
       #  run: |
-      #    poetry run pytest
+      #    uv run pytest
 
   pypi_publish:
     runs-on: ubuntu-latest
@@ -45,36 +44,31 @@ jobs:
       max-parallel: 4
       matrix:
         python-version:
-          - 3.7
+          - "3.12"
     needs:
       - python_build_and_test
     steps:
       - name: Clone git repo
         uses: actions/checkout@v1
-      - name: Set up Python (v${{ matrix.python-version }})
-        uses: actions/setup-python@v1
+      - name: Setup uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install pipx and poetry
-        run: |
-          python3 -m pip install pipx
-          python3 -m pipx ensurepath
-          pipx install poetry
       - name: Push to PyPi (https://pypi.org/project/tap-powerbi-metadata/)  (build number ${{ github.run_number }})
         env:
           BRANCH_NAME: ${{ github.ref }}
-          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_PUBLISH_TOKEN }}
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_PUBLISH_TOKEN }}
         run: |
           echo "Publishing to PyPi..."
           if [[ "$BRANCH_NAME" == *main ]]
           then
-            poetry version --short
+            uv version --short
           else
-            poetry version $(poetry version --short)-dev.$GITHUB_RUN_NUMBER
-            poetry version --short
+            uv version "$(uv version --short).dev${GITHUB_RUN_NUMBER}"
           fi
-          echo -e "\nPublishing to version ref '$(poetry version --short)'...\n\n"
-          poetry publish --build
+          echo -e "\nPublishing to version ref '$(uv version --short)'...\n\n"
+          uv build
+          uv publish
       - name: Wait up to 3 minutes for PyPi availability
         run: |
           pwd

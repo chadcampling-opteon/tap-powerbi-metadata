@@ -7,7 +7,7 @@ This [Singer](https://singer.io) tap was created using the [Meletano SDK for Tap
 ## Installation
 
 ```bash
-pipx install git+https://github.com/dataops-tk/tap-powerbi-metadata.git
+uv tool install git+https://github.com/dataops-tk/tap-powerbi-metadata.git
 ```
 
 ## Configuration
@@ -67,46 +67,40 @@ To upgrade the version of SDK being used, go to the [Release History tab on the 
 Then in the command prompt, while in the repo run the following, after replacing the version number with the one you copied
 
 ```bash
-poetry add singer-sdk==0.2.0
+uv add singer-sdk==0.2.0
 ```
 
 ### Initialize your Development Environment
 
-If you've not already installed Poetry:
+Prerequisites: Python 3.10+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-pipx install poetry
-```
-
-To update your local virtual environment:
-
-```bash
-poetry install
+uv sync
 ```
 
 ### Testing locally
 
-Execute the tap locally with the `poetry run` prefix:
+Execute the tap locally with the `uv run` prefix:
 
 ```bash
-poetry run tap-powerbi-metadata --help
+uv run tap-powerbi-metadata --help
 
-poetry run tap-powerbi-metadata --config=.secrets\config.json > Activity.jsonl
+uv run tap-powerbi-metadata --config=.secrets\config.json > Activity.jsonl
 cat Activity.jsonl | target-csv
 cat Activity.jsonl | target-snowflake --config=.secrets/target-config.json
 ```
 
 ### Create and Run Tests
 
-Create tests within the `tap-powerbi-metadata/tests` subfolder and
+Create tests within the `tap_powerbi_metadata/tests` subfolder and
   then run:
 
 ```bash
-poetry run pytest
+uv run pytest
 ```
 
-You can also test the `tap-powerbi-metadata` CLI interface directly using `poetry run`:
+You can also test the `tap-powerbi-metadata` CLI interface directly using `uv run`:
 
 ```bash
-poetry run tap-powerbi-metadata --help
+uv run tap-powerbi-metadata --help
 ```
