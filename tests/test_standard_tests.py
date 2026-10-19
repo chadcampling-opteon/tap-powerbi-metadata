@@ -20,10 +20,15 @@ from tap_powerbi_metadata import streams
 from tap_powerbi_metadata.streams import ActivityEventsStream, WorkspaceInfoStream
 from tap_powerbi_metadata.tap import TapPowerBIMetadata
 
-if sys.version_info >= (3, 11):
-    from typing import Self, override
+if sys.version_info >= (3, 12):
+    from typing import override
 else:
-    from typing_extensions import Self, override
+    from typing_extensions import override
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
 
 if TYPE_CHECKING:
     from datetime import tzinfo
