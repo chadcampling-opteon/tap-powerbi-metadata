@@ -2,6 +2,7 @@
 
 import datetime
 import logging
+from pathlib import Path
 from urllib import parse
 from dateutil.relativedelta import relativedelta
 from singer_sdk.helpers._typing import conform_record_data_types, TypeConformanceLevel
@@ -15,17 +16,26 @@ from tap_powerbi_metadata import streams
 from tap_powerbi_metadata.streams import ActivityEventsStream, WorkspaceInfoStream
 from tap_powerbi_metadata.tap import TapPowerBIMetadata
 
-SAMPLE_CONFIG = read_json_file('.secrets/config.json')
-SAMPLE_CONFIG['start_date'] = (datetime.datetime.now(datetime.timezone.utc) - relativedelta(days=5)).strftime('%Y-%m-%dT%H:%M:%SZ')
-
-TEST_SUITE_CONFIG = SuiteConfig(
+CONFIG_PATH = Path(".secrets/config.json")
+SAMPLE_CONFIG = (
+    read_json_file(CONFIG_PATH)
+    if CONFIG_PATH.exists()
+    else {
+        "tenant_id": "tenant-id",
+        "client_id": "client-id",
+        "client_secret": "client-secret",
+    }
 )
+SAMPLE_CONFIG["start_date"] = (
+    datetime.datetime.now(datetime.timezone.utc) - relativedelta(days=5)
+).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-TestTapPowerBiMetadata = get_tap_test_class(
-    tap_class=TapPowerBIMetadata,
-    config=SAMPLE_CONFIG,
-    suite_config=TEST_SUITE_CONFIG
-)
+if CONFIG_PATH.exists():
+    TestTapPowerBiMetadata = get_tap_test_class(
+        tap_class=TapPowerBIMetadata,
+        config=SAMPLE_CONFIG,
+        suite_config=SuiteConfig(),
+    )
 
 
 def test_workspace_child_objects_survive_recursive_conformance():

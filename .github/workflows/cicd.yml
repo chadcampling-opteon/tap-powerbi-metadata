@@ -22,11 +22,6 @@ jobs:
     steps:
       - name: Clone git repo
         uses: actions/checkout@v1
-      - name: "Print Version Info (build number ${{ github.run_number }})"
-        run: |
-          echo "Build Number: $GITHUB_RUN_NUMBER"
-          echo "Version:      $(cat VERSION).$GITHUB_RUN_NUMBER"
-          echo "Run ID:       ${{ github.run_id }}"
       - name: Setup uv
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
@@ -34,58 +29,6 @@ jobs:
       - name: Install tap
         run: |
           uv sync --frozen
-      #- name: Run tests
-      #  run: |
-      #    uv run pytest
-
-  pypi_publish:
-    runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 4
-      matrix:
-        python-version:
-          - "3.12"
-    needs:
-      - python_build_and_test
-    steps:
-      - name: Clone git repo
-        uses: actions/checkout@v1
-      - name: Setup uv
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Push to PyPi (https://pypi.org/project/tap-powerbi-metadata/)  (build number ${{ github.run_number }})
-        env:
-          BRANCH_NAME: ${{ github.ref }}
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_PUBLISH_TOKEN }}
+      - name: Run tests
         run: |
-          echo "Publishing to PyPi..."
-          if [[ "$BRANCH_NAME" == *main ]]
-          then
-            uv version --short
-          else
-            uv version "$(uv version --short).dev${GITHUB_RUN_NUMBER}"
-          fi
-          echo -e "\nPublishing to version ref '$(uv version --short)'...\n\n"
-          uv build
-          uv publish
-      - name: Wait up to 3 minutes for PyPi availability
-        run: |
-          pwd
-          ls -la
-          export VER=$(cat VERSION)
-          export PIPERR=$(pip install tapdance==$VER 2>&1)
-          echo "Checking for PyPi availability of version $VER"
-          if [[ $PIPERR == *"$VER"* ]]; then { echo "Yes"; } else { echo "Not yet found..."; sleep 30; } fi;
-          export PIPERR=$(pip install tapdance==$VER 2>&1)
-          if [[ $PIPERR == *"$VER"* ]]; then { echo "Yes"; } else { echo "Not yet found..."; sleep 30; } fi;
-          export PIPERR=$(pip install tapdance==$VER 2>&1)
-          if [[ $PIPERR == *"$VER"* ]]; then { echo "Yes"; } else { echo "Not yet found..."; sleep 30; } fi;
-          export PIPERR=$(pip install tapdance==$VER 2>&1)
-          if [[ $PIPERR == *"$VER"* ]]; then { echo "Yes"; } else { echo "Not yet found..."; sleep 30; } fi;
-          export PIPERR=$(pip install tapdance==$VER 2>&1)
-          if [[ $PIPERR == *"$VER"* ]]; then { echo "Yes"; } else { echo "Not yet found..."; sleep 30; } fi;
-          export PIPERR=$(pip install tapdance==$VER 2>&1)
-          if [[ $PIPERR == *"$VER"* ]]; then { echo "Yes"; } else { echo "Not yet found..."; sleep 30; } fi;
-          export PIPERR=$(pip install tapdance==$VER 2>&1)
-          if [[ $PIPERR == *"$VER"* ]]; then { echo "Yes"; } else { echo "Not found. Giving up. Last message from PyPi was $PIPERR"; exit 1; } fi;
+          uv run pytest
