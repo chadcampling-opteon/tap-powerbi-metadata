@@ -1,53 +1,37 @@
-# Welcome to the tap-powerbi-metadata Singer Tap!
+# tap-powerbi-metadata
 
-This [Singer](https://singer.io) tap was created using the [Meletano SDK for Taps](https://sdk.meltano.com).
-
----------------------------------
+`tap-powerbi-metadata` is a Singer tap for Power BI metadata, built with the [Meltano Singer SDK](https://sdk.meltano.com).
 
 ## Installation
 
+Install from GitHub:
+
 ```bash
-pipx install git+https://github.com/dataops-tk/tap-powerbi-metadata.git
+uv tool install git+https://github.com/chadcampling-opteon/tap-powerbi-metadata.git
 ```
 
 ## Configuration
 
-### Accepted Config Options
+### Accepted config options
 
-- `client_id` - The unique client ID for the Power BI tenant.
-- `tenant_id` - The unique identifier for the Power BI tenant.
-- `client_secret` - Password to use in the client_credentials auth flow.
-- `start_date` - Optional. Earliest date of data to stream.
+- `tenant_id`: The Azure AD tenant that owns the Power BI service principal.
+- `client_id`: The application (client) ID of the service principal.
+- `client_secret`: The client secret used by the client-credentials flow.
+- `start_date`: Optional. The earliest record date to sync.
 
-Note:
+A sample config file is available at [`.secrets/config.json.template`](.secrets/config.json.template). Run `tap-powerbi-metadata --about` for the full list of settings and capabilities.
 
-- A sample config file is available at `.secrets/config.json.template`
-- A full list of supported settings and capabilities for this tap is available by running:
+### Source authentication and authorization
 
-    ```bash
-    tap-powerbi-metadata --about
-    ```
+Access to the Power BI REST API requires a service principal. Someone with admin access to Microsoft Entra ID must create that principal and grant it access to the Power BI tenant.
 
-### Source Authentication and Authorization
-
-_**NOTE:** Access to the Power BI REST API requires a service account (aka "Service Principal"), which must
-be created by someone with admin access to Azure Active Directory (AAD)._
-
-More information on this process is available under the 
-[Automation with service principals](https://docs.microsoft.com/en-us/power-bi/admin/service-premium-service-principal)
-topic on docs.microsoft.com.
-
-- If you do not have access to a Power BI tenant, this _might_ be helpful:
-  - https://docs.microsoft.com/en-us/power-bi/developer/embedded/create-an-azure-active-directory-tenant
-
-`TODO:` Test out this process of creating a new tenant and service principal for testing purposes and so users/developers won't have to run this in prod to know it works properly.
-
+Microsoft documents the process under [Automation with service principals](https://learn.microsoft.com/en-us/power-bi/developer/embedded/embed-service-principal). Creating a Microsoft Entra tenant is documented in [Create a Microsoft Entra tenant](https://learn.microsoft.com/en-us/power-bi/developer/embedded/embed-organization-create-azure-active-directory-tenant).
 
 ## Usage
 
-You can easily run `tap-powerbi-metadata` by itself or in a pipeline using [Meltano](www.meltano.com).
+You can run `tap-powerbi-metadata` by itself or in a pipeline using [Meltano](https://docs.meltano.com).
 
-### Executing the Tap Directly
+### Executing the tap directly
 
 ```bash
 tap-powerbi-metadata --version
@@ -55,58 +39,58 @@ tap-powerbi-metadata --help
 tap-powerbi-metadata --config CONFIG --discover > ./catalog.json
 ```
 
+## Developer resources
 
-## How to Contribute
+Follow these instructions to contribute to this project.
 
-See the [SDK dev guide](https://sdk.meltano.com/dev_guide.html) for more instructions on how to use the Singer SDK to develop your own taps and targets.
+### Initialize your development environment
 
-### Upgrading the SDK Version
-
-To upgrade the version of SDK being used, go to the [Release History tab on the pypi repo for the SDK](https://pypi.org/project/singer-sdk/#history) and copy the version number only
-
-Then in the command prompt, while in the repo run the following, after replacing the version number with the one you copied
+Prerequisites: Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-poetry add singer-sdk==0.2.0
+uv sync
 ```
 
-### Initialize your Development Environment
+### Create and run tests
 
-If you've not already installed Poetry:
+Create tests in the `tests/` directory and then run:
 
 ```bash
-pipx install poetry
+uv run pytest
 ```
 
-To update your local virtual environment:
+You can also test the `tap-powerbi-metadata` CLI interface directly using `uv run`:
 
 ```bash
-poetry install
+uv run tap-powerbi-metadata --help
 ```
 
-### Testing locally
+### Testing with [Meltano](https://docs.meltano.com)
 
-Execute the tap locally with the `poetry run` prefix:
+_**Note:** This tap will work in any Singer environment and does not require Meltano. Examples here are for convenience and to streamline end-to-end orchestration scenarios._
+
+Your project comes with a custom `meltano.yml` project file already created.
+
+Next, install Meltano (if you haven't already) and any needed plugins:
 
 ```bash
-poetry run tap-powerbi-metadata --help
-
-poetry run tap-powerbi-metadata --config=.secrets\config.json > Activity.jsonl
-cat Activity.jsonl | target-csv
-cat Activity.jsonl | target-snowflake --config=.secrets/target-config.json
+# Install meltano
+uv tool install meltano
+# Initialize meltano within this directory
+cd tap-powerbi-metadata
+meltano install
 ```
 
-### Create and Run Tests
-
-Create tests within the `tap-powerbi-metadata/tests` subfolder and
-  then run:
+Now you can test and orchestrate using Meltano:
 
 ```bash
-poetry run pytest
+# Test invocation:
+meltano invoke tap-powerbi-metadata --version
+
+# OR run a test ELT pipeline:
+meltano run tap-powerbi-metadata target-jsonl
 ```
 
-You can also test the `tap-powerbi-metadata` CLI interface directly using `poetry run`:
+### SDK dev guide
 
-```bash
-poetry run tap-powerbi-metadata --help
-```
+See the [dev guide](https://sdk.meltano.com/en/latest/dev_guide.html) for more instructions on how to use the Meltano Singer SDK to develop your own taps and targets.

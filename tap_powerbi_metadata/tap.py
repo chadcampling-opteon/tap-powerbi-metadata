@@ -1,8 +1,10 @@
 """PowerBIMetadata tap class."""
 
-from pathlib import Path
-from typing import List
-from singer_sdk import Tap, Stream
+from __future__ import annotations
+
+import sys
+
+from singer_sdk import Stream, Tap
 from singer_sdk.typing import (
     DateTimeType,
     PropertiesList,
@@ -16,12 +18,17 @@ from tap_powerbi_metadata.streams import (
     WorkspaceInfoStream,
 )
 
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
+
 PLUGIN_NAME = "tap-powerbi-metadata"
 
 STREAM_TYPES = [
-  ActivityEventsStream,
-  WorkspaceInfoStream,
-  DataSourcesStream,
+    ActivityEventsStream,
+    WorkspaceInfoStream,
+    DataSourcesStream,
 ]
 
 
@@ -36,7 +43,8 @@ class TapPowerBIMetadata(Tap):
         Property("start_date", DateTimeType),
     ).to_dict()
 
-    def discover_streams(self) -> List[Stream]:
+    @override
+    def discover_streams(self) -> list[Stream]:
         """Return a list of discovered streams."""
         return [stream_class(tap=self) for stream_class in STREAM_TYPES]
 
