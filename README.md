@@ -45,7 +45,7 @@ Follow these instructions to contribute to this project.
 
 ### Initialize your development environment
 
-Prerequisites: Python 3.10+ and [uv](https://docs.astral.sh/uv/).
+Prerequisites: Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
